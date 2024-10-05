@@ -5,7 +5,8 @@ let velocity = { x: 0, y: 0, z: 0 };
 // Function to request motion permission and start logging IMU data
 function startIMUTracking() {
     console.log("Checking if motion permission is required...");
-    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         console.log("Requesting permission for motion sensors...");
         // For iOS 13+ devices, request permission for motion data
         DeviceMotionEvent.requestPermission()
@@ -14,16 +15,19 @@ function startIMUTracking() {
                     console.log("Permission granted, starting IMU tracking.");
                     window.addEventListener('devicemotion', updateIMUData);
                 } else {
-                    console.log('Permission to access motion data denied.');
+                    alert('Permission to access motion data was denied. Please enable motion data in your browser settings.');
                 }
             })
             .catch(error => {
                 console.error("Error requesting motion permission: ", error);
             });
-    } else {
-        console.log("DeviceMotionEvent.requestPermission not required, starting IMU tracking directly.");
-        // For non-iOS devices or older versions
+    } else if (typeof DeviceMotionEvent !== 'undefined') {
+        console.log("No need to request permission, starting IMU tracking directly.");
+        // For devices or browsers that do not require permission (non-iOS or older versions)
         window.addEventListener('devicemotion', updateIMUData);
+    } else {
+        alert("Your device does not support motion sensors or the browser does not allow access.");
+        console.log("DeviceMotionEvent is not supported by this device or browser.");
     }
 }
 

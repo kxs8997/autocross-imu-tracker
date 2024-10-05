@@ -4,22 +4,26 @@ let velocity = { x: 0, y: 0, z: 0 };
 
 // Function to request motion permission and start logging IMU data
 function startIMUTracking() {
+    console.log("Checking if motion permission is required...");
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        console.log("Requesting permission for motion sensors...");
         // For iOS 13+ devices, request permission for motion data
         DeviceMotionEvent.requestPermission()
             .then(response => {
                 if (response === 'granted') {
+                    console.log("Permission granted, starting IMU tracking.");
                     window.addEventListener('devicemotion', updateIMUData);
-                    console.log('Permission granted, IMU tracking started');
                 } else {
                     console.log('Permission to access motion data denied.');
                 }
             })
-            .catch(console.error);
+            .catch(error => {
+                console.error("Error requesting motion permission: ", error);
+            });
     } else {
+        console.log("DeviceMotionEvent.requestPermission not required, starting IMU tracking directly.");
         // For non-iOS devices or older versions
         window.addEventListener('devicemotion', updateIMUData);
-        console.log('IMU tracking started');
     }
 }
 
@@ -39,7 +43,7 @@ function updateIMUData(event) {
 
         console.log("Updated Velocity: ", velocity);
     } else {
-        console.log("No acceleration data available");
+        console.log("No acceleration data available.");
     }
 }
 

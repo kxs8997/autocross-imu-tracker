@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autocross IMU Tracker</title>
+    <title>Autocross Orientation Tracker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,17 +12,28 @@
         #log {
             margin-top: 20px;
         }
-        button {
-            padding: 10px;
-            font-size: 16px;
+        .indicatorDot {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+        }
+        #trackingArea {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            border: 2px solid black;
         }
     </style>
 </head>
 <body>
-    <h1>Autocross IMU Cone Tracker</h1>
-    <p>Press the button to start tracking accelerometer data and log cone positions!</p>
-    <button id="startTracking">Start IMU Tracking</button>
-    <button id="logCone" style="margin-left: 10px;">Log Cone Position</button>
+    <h1>Autocross Orientation Tracker</h1>
+    <p>Press the button to start tracking the phone's orientation and move the dot!</p>
+    <button id="startTracking">Start Tracking</button>
+    <div id="trackingArea">
+        <div class="indicatorDot"></div>
+    </div>
     <div id="log"></div>
 
     <script src="app.js"></script>

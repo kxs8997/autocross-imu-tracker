@@ -1,69 +1,68 @@
-let conePositions = [];
-let acceleration = { x: 0, y: 0, z: 0 };
-let velocity = { x: 0, y: 0, z: 0 };
+let px = 50; // Position x
+let py = 50; // Position y
+let vx = 0.0; // Velocity x
+let vy = 0.0; // Velocity y
+const updateRate = 1/60; // Sensor refresh rate
 
-// Function to request motion permission and start logging IMU data
 function getAccel() {
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         console.log("Requesting permission for motion sensors...");
-        // For iOS 13+ devices, request permission for motion data
         DeviceMotionEvent.requestPermission().then(response => {
             if (response === 'granted') {
-                console.log("Accelerometer permission granted.");
-                startIMUTracking();
+                console.log("Permission granted, starting tracking...");
+                trackOrientation();
             } else {
-                alert('Permission denied. Please enable motion access in settings.');
+                console.log("Permission denied.");
+                alert("Permission denied. Please enable motion access in your device settings.");
             }
         }).catch(error => {
-            console.error("Error requesting motion permission: ", error);
-            alert("An error occurred while requesting motion sensor access.");
+            console.error("Error requesting permission: ", error);
         });
-    } else if (typeof DeviceMotionEvent !== 'undefined') {
-        console.log("Permission not required, starting IMU tracking directly.");
-        // For devices that don't require permission (non-iOS or older versions)
-        startIMUTracking();
     } else {
-        alert("Your device does not support motion sensors or the browser does not allow access.");
-        console.log("DeviceMotionEvent is not supported by this device or browser.");
+        console.log("Permission not required, starting tracking...");
+        trackOrientation();
     }
 }
 
-// Start tracking accelerometer data
-function startIMUTracking() {
-    window.addEventListener('devicemotion', event => {
-        if (event.acceleration) {
-            console.log("Acceleration Data: X=" + event.acceleration.x + ", Y=" + event.acceleration.y + ", Z=" + event.acceleration.z);
-
-            // Update acceleration data
-            acceleration.x = event.acceleration.x || 0;
-            acceleration.y = event.acceleration.y || 0;
-            acceleration.z = event.acceleration.z || 0;
-
-            // Update velocity (simple integration for demonstration purposes)
-            velocity.x += acceleration.x;
-            velocity.y += acceleration.y;
-            velocity.z += acceleration.z;
-
-            console.log("Updated Velocity: X=" + velocity.x.toFixed(2) + ", Y=" + velocity.y.toFixed(2) + ", Z=" + velocity.z.toFixed(2));
-        } else {
-            console.log("No acceleration data available.");
+function trackOrientation() {
+    // Add a listener to track smartphone orientation
+    window.addEventListener('deviceorientation', (event) => {
+        // Get rotation angles
+        let rotation_degrees = event.alpha; // Rotation around z-axis
+        let frontToBack_degrees = event.beta; // Rotation around x-axis
+        let leftToRight_degrees = event.gamma; // Rotation around y-axis
+        
+        // Update velocity according to phone tilt
+        vx = vx + leftToRight_degrees * updateRate * 2; // Double the tilt velocity for x-axis
+        vy = vy + frontToBack_degrees * updateRate; // Tilt velocity for y-axis
+        
+        // Update position and clip within bounds
+        px = px + vx * 0.5; // Adjust x position based on velocity
+        if (px > 98 || px < 0) { 
+            px = Math.max(0, Math.min(98, px)); // Clip between 0-98%
+            vx = 0; // Stop movement when hitting the boundary
         }
+
+        py = py + vy * 0.5; // Adjust y position based on velocity
+        if (py > 98 || py < 0) { 
+            py = Math.max(0, Math.min(98, py)); // Clip between 0-98%
+            vy = 0; // Stop movement when hitting the boundary
+        }
+        
+        // Update the position of the indicator dot
+        let dot = document.getElementsByClassName("indicatorDot")[0];
+        dot.style.left = px + "%";
+        dot.style.top = py + "%";
+
+        // Log position and velocity data
+        let logDiv = document.getElementById('log');
+        logDiv.innerHTML = `
+            Position: X = ${px.toFixed(2)}%, Y = ${py.toFixed(2)}%<br>
+            Velocity: X = ${vx.toFixed(2)}, Y = ${vy.toFixed(2)}<br>
+            Orientation: Alpha = ${rotation_degrees.toFixed(2)}, Beta = ${frontToBack_degrees.toFixed(2)}, Gamma = ${leftToRight_degrees.toFixed(2)}
+        `;
     });
 }
 
-// Function to log cone positions
-function logConePosition() {
-    let position = { x: velocity.x, y: velocity.y, z: velocity.z };
-    conePositions.push(position);
-
-    // Display the logged positions
-    let logDiv = document.getElementById('log');
-    logDiv.innerHTML = `Logged ${conePositions.length} cone(s): <br>`;
-    conePositions.forEach((pos, index) => {
-        logDiv.innerHTML += `Cone ${index + 1}: X: ${pos.x.toFixed(2)}, Y: ${pos.y.toFixed(2)}, Z: ${pos.z.toFixed(2)}<br>`;
-    });
-}
-
-// Event listeners for buttons
+// Start tracking when the button is clicked
 document.getElementById('startTracking').addEventListener('click', getAccel);
-document.getElementById('logCone').addEventListener('click', logConePosition);

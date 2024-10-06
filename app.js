@@ -1,7 +1,10 @@
-let origin = { x: 0, y: 0, z: 0 }; // Initial position set as the origin
-let currentPos = { x: 0, y: 0, z: 0 }; // Current position
-let hasLoggedInitial = false; // To track the first log
-let isTracking = false;
+let currentPos = { x: 0, y: 0, z: 0 }; // Current position in meters
+let velocity = { x: 0, y: 0, z: 0 };   // Velocity in m/s
+let acceleration = { x: 0, y: 0, z: 0 }; // Acceleration in m/s²
+const updateRate = 1 / 60; // Assume update rate of 60 Hz, can be calculated dynamically
+
+let hasLoggedInitial = false;
+let lastTimestamp = null;
 
 function requestPermission() {
     DeviceMotionEvent.requestPermission()
@@ -18,36 +21,46 @@ function requestPermission() {
 }
 
 function handleMotionEvent(event) {
-    if (!event.acceleration) return;
+    if (!event.acceleration || !event.acceleration.x) return;
 
-    // Update the current position based on acceleration
-    currentPos.x += event.acceleration.x || 0;
-    currentPos.y += event.acceleration.y || 0;
-    currentPos.z += event.acceleration.z || 0;
+    let currentTimestamp = event.timeStamp; // Current time in milliseconds
+    if (lastTimestamp === null) {
+        lastTimestamp = currentTimestamp;
+        return;
+    }
+
+    let deltaTime = (currentTimestamp - lastTimestamp) / 1000; // Time difference in seconds
+    lastTimestamp = currentTimestamp;
+
+    // Get the acceleration values in m/s² (without gravity)
+    acceleration.x = event.acceleration.x;
+    acceleration.y = event.acceleration.y;
+    acceleration.z = event.acceleration.z;
+
+    // Integrate acceleration to get velocity (v = v0 + a * dt)
+    velocity.x += acceleration.x * deltaTime;
+    velocity.y += acceleration.y * deltaTime;
+    velocity.z += acceleration.z * deltaTime;
+
+    // Integrate velocity to get position (x = x0 + v * dt)
+    currentPos.x += velocity.x * deltaTime;
+    currentPos.y += velocity.y * deltaTime;
+    currentPos.z += velocity.z * deltaTime;
+
+    // Log the current state
+    console.log(`Position: X = ${currentPos.x.toFixed(2)} m, Y = ${currentPos.y.toFixed(2)} m, Z = ${currentPos.z.toFixed(2)} m`);
 }
 
 function logPosition() {
     if (!hasLoggedInitial) {
-        // The first log is the origin
-        origin.x = currentPos.x;
-        origin.y = currentPos.y;
-        origin.z = currentPos.z;
         hasLoggedInitial = true;
-        console.log("Origin logged:", origin);
     }
 
-    // Log the position relative to the origin
-    let relativePos = {
-        x: currentPos.x - origin.x,
-        y: currentPos.y - origin.y,
-        z: currentPos.z - origin.z,
-    };
-
-    // Display the log
+    // Log the current position in meters
     const logDiv = document.getElementById('log');
-    logDiv.innerHTML += `Position relative to origin: X = ${relativePos.x.toFixed(2)}, Y = ${relativePos.y.toFixed(2)}, Z = ${relativePos.z.toFixed(2)}<br>`;
+    logDiv.innerHTML += `Position: X = ${currentPos.x.toFixed(2)} m, Y = ${currentPos.y.toFixed(2)} m, Z = ${currentPos.z.toFixed(2)} m<br>`;
 }
 
-// Add event listeners for buttons
+// Event listeners for buttons
 document.getElementById('requestPermission').addEventListener('click', requestPermission);
 document.getElementById('logPosition').addEventListener('click', logPosition);

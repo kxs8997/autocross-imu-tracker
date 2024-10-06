@@ -1,10 +1,29 @@
 let currentPos = { x: 0, y: 0, z: 0 }; // Current position in meters
 let velocity = { x: 0, y: 0, z: 0 };   // Velocity in m/s
 let acceleration = { x: 0, y: 0, z: 0 }; // Acceleration in m/s²
-const updateRate = 1 / 60; // Assume update rate of 60 Hz, can be calculated dynamically
-
-let hasLoggedInitial = false;
+let filteredPos = { x: 0, y: 0, z: 0 }; // Kalman filtered position
 let lastTimestamp = null;
+
+// Kalman Filter parameters
+let processNoise = 1e-5; // Q: process noise covariance (tuning parameter)
+let measurementNoise = 1e-3; // R: measurement noise covariance (tuning parameter)
+let uncertainty = { x: 1, y: 1, z: 1 }; // P: estimation uncertainty
+
+function kalmanFilter(measurement, filtered, uncertainty, axis) {
+    // Prediction step (we don't need an explicit velocity prediction since it's integrated directly)
+    uncertainty[axis] += processNoise;
+
+    // Kalman Gain
+    let K = uncertainty[axis] / (uncertainty[axis] + measurementNoise);
+
+    // Update position based on measurement
+    filtered[axis] += K * (measurement - filtered[axis]);
+
+    // Update uncertainty
+    uncertainty[axis] *= (1 - K);
+
+    return filtered[axis];
+}
 
 function requestPermission() {
     DeviceMotionEvent.requestPermission()
@@ -21,7 +40,7 @@ function requestPermission() {
 }
 
 function handleMotionEvent(event) {
-    if (!event.acceleration || !event.acceleration.x) return;
+    if (!event.acceleration) return;
 
     let currentTimestamp = event.timeStamp; // Current time in milliseconds
     if (lastTimestamp === null) {
@@ -32,33 +51,34 @@ function handleMotionEvent(event) {
     let deltaTime = (currentTimestamp - lastTimestamp) / 1000; // Time difference in seconds
     lastTimestamp = currentTimestamp;
 
-    // Get the acceleration values in m/s² (without gravity)
-    acceleration.x = event.acceleration.x;
-    acceleration.y = event.acceleration.y;
-    acceleration.z = event.acceleration.z;
+    // Get acceleration data in m/s² (without gravity)
+    acceleration.x = event.acceleration.x || 0;
+    acceleration.y = event.acceleration.y || 0;
+    acceleration.z = event.acceleration.z || 0;
 
-    // Integrate acceleration to get velocity (v = v0 + a * dt)
+    // Integrate acceleration to get velocity
     velocity.x += acceleration.x * deltaTime;
     velocity.y += acceleration.y * deltaTime;
     velocity.z += acceleration.z * deltaTime;
 
-    // Integrate velocity to get position (x = x0 + v * dt)
+    // Integrate velocity to get position
     currentPos.x += velocity.x * deltaTime;
     currentPos.y += velocity.y * deltaTime;
     currentPos.z += velocity.z * deltaTime;
 
-    // Log the current state
-    console.log(`Position: X = ${currentPos.x.toFixed(2)} m, Y = ${currentPos.y.toFixed(2)} m, Z = ${currentPos.z.toFixed(2)} m`);
+    // Apply Kalman filter to smooth the position
+    filteredPos.x = kalmanFilter(currentPos.x, filteredPos.x, uncertainty, 'x');
+    filteredPos.y = kalmanFilter(currentPos.y, filteredPos.y, uncertainty, 'y');
+    filteredPos.z = kalmanFilter(currentPos.z, filteredPos.z, uncertainty, 'z');
+
+    // Log the Kalman-filtered position for debugging
+    console.log(`Filtered Position: X = ${filteredPos.x.toFixed(2)} m, Y = ${filteredPos.y.toFixed(2)} m, Z = ${filteredPos.z.toFixed(2)} m`);
 }
 
 function logPosition() {
-    if (!hasLoggedInitial) {
-        hasLoggedInitial = true;
-    }
-
-    // Log the current position in meters
+    // Log the Kalman-filtered position
     const logDiv = document.getElementById('log');
-    logDiv.innerHTML += `Position: X = ${currentPos.x.toFixed(2)} m, Y = ${currentPos.y.toFixed(2)} m, Z = ${currentPos.z.toFixed(2)} m<br>`;
+    logDiv.innerHTML += `Filtered Position: X = ${filteredPos.x.toFixed(2)} m, Y = ${filteredPos.y.toFixed(2)} m, Z = ${filteredPos.z.toFixed(2)} m<br>`;
 }
 
 // Event listeners for buttons

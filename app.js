@@ -1,18 +1,23 @@
-let px = 50; // Position x
-let py = 50; // Position y
+let px = 50; // Position x in percentage (centered initially)
+let py = 50; // Position y in percentage
 let vx = 0.0; // Velocity x
 let vy = 0.0; // Velocity y
-const updateRate = 1/60; // Sensor refresh rate
+let ax = 0.0; // Acceleration x
+let ay = 0.0; // Acceleration y
+const updateRate = 1/60; // Update rate for sensor in seconds
 
+let isTracking = false;
+let lastTimestamp = null;
+
+// Function to request motion sensor access and start tracking
 function getAccel() {
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         console.log("Requesting permission for motion sensors...");
         DeviceMotionEvent.requestPermission().then(response => {
             if (response === 'granted') {
                 console.log("Permission granted, starting tracking...");
-                trackOrientation();
+                startTracking();
             } else {
-                console.log("Permission denied.");
                 alert("Permission denied. Please enable motion access in your device settings.");
             }
         }).catch(error => {
@@ -20,49 +25,72 @@ function getAccel() {
         });
     } else {
         console.log("Permission not required, starting tracking...");
-        trackOrientation();
+        startTracking();
     }
 }
 
-function trackOrientation() {
-    // Add a listener to track smartphone orientation
-    window.addEventListener('deviceorientation', (event) => {
-        // Get rotation angles
-        let rotation_degrees = event.alpha; // Rotation around z-axis
-        let frontToBack_degrees = event.beta; // Rotation around x-axis
-        let leftToRight_degrees = event.gamma; // Rotation around y-axis
-        
-        // Update velocity according to phone tilt
-        vx = vx + leftToRight_degrees * updateRate * 2; // Double the tilt velocity for x-axis
-        vy = vy + frontToBack_degrees * updateRate; // Tilt velocity for y-axis
-        
-        // Update position and clip within bounds
-        px = px + vx * 0.5; // Adjust x position based on velocity
-        if (px > 98 || px < 0) { 
-            px = Math.max(0, Math.min(98, px)); // Clip between 0-98%
-            vx = 0; // Stop movement when hitting the boundary
+// Function to start tracking the phone's movement using the accelerometer
+function startTracking() {
+    isTracking = true;
+
+    // Add a listener for device motion (accelerometer data)
+    window.addEventListener('devicemotion', (event) => {
+        if (!isTracking) return;
+
+        let currentTimestamp = event.timeStamp; // Get the current timestamp
+        if (lastTimestamp === null) {
+            lastTimestamp = currentTimestamp;
+            return;
         }
 
-        py = py + vy * 0.5; // Adjust y position based on velocity
-        if (py > 98 || py < 0) { 
-            py = Math.max(0, Math.min(98, py)); // Clip between 0-98%
-            vy = 0; // Stop movement when hitting the boundary
-        }
-        
-        // Update the position of the indicator dot
-        let dot = document.getElementsByClassName("indicatorDot")[0];
-        dot.style.left = px + "%";
-        dot.style.top = py + "%";
+        let deltaTime = (currentTimestamp - lastTimestamp) / 1000; // Time in seconds since the last update
+        lastTimestamp = currentTimestamp;
 
-        // Log position and velocity data
-        let logDiv = document.getElementById('log');
-        logDiv.innerHTML = `
-            Position: X = ${px.toFixed(2)}%, Y = ${py.toFixed(2)}%<br>
-            Velocity: X = ${vx.toFixed(2)}, Y = ${vy.toFixed(2)}<br>
-            Orientation: Alpha = ${rotation_degrees.toFixed(2)}, Beta = ${frontToBack_degrees.toFixed(2)}, Gamma = ${leftToRight_degrees.toFixed(2)}
-        `;
+        // Get the acceleration data
+        if (event.acceleration) {
+            ax = event.acceleration.x || 0;
+            ay = event.acceleration.y || 0;
+
+            // Integrate acceleration to get velocity
+            vx += ax * deltaTime;
+            vy += ay * deltaTime;
+
+            // Integrate velocity to get position
+            px = px + vx * deltaTime * 50; // Adjust x position based on velocity
+            py = py + vy * deltaTime * 50; // Adjust y position based on velocity
+
+            // Clip positions within 0% to 100% bounds (stay within the visible area)
+            px = Math.max(0, Math.min(100, px));
+            py = Math.max(0, Math.min(100, py));
+
+            // Log the movement for debugging
+            let logDiv = document.getElementById('log');
+            logDiv.innerHTML = `
+                Position: X = ${px.toFixed(2)}%, Y = ${py.toFixed(2)}%<br>
+                Velocity: X = ${vx.toFixed(2)}, Y = ${vy.toFixed(2)}<br>
+                Acceleration: X = ${ax.toFixed(2)}, Y = ${ay.toFixed(2)}
+            `;
+        }
     });
 }
 
-// Start tracking when the button is clicked
+// Function to log the current position as an orange dot
+function logPosition() {
+    if (!isTracking) return;
+
+    // Create a new dot at the current position
+    let dot = document.createElement('div');
+    dot.className = 'logDot';
+    dot.style.left = px + "%";
+    dot.style.top = py + "%";
+
+    // Add the dot to the tracking area
+    let trackingArea = document.getElementById('trackingArea');
+    trackingArea.appendChild(dot);
+}
+
+// Start tracking when the "Start Tracking" button is clicked
 document.getElementById('startTracking').addEventListener('click', getAccel);
+
+// Log position when the "Log Position" button is clicked
+document.getElementById('logPosition').addEventListener('click', logPosition);

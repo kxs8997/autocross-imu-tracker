@@ -3,56 +3,56 @@ let acceleration = { x: 0, y: 0, z: 0 };
 let velocity = { x: 0, y: 0, z: 0 };
 
 // Function to request motion permission and start logging IMU data
-function startIMUTracking() {
-    console.log("Checking if motion permission is required...");
-    
+function getAccel() {
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         console.log("Requesting permission for motion sensors...");
         // For iOS 13+ devices, request permission for motion data
-        DeviceMotionEvent.requestPermission()
-            .then(response => {
-                if (response === 'granted') {
-                    console.log("Permission granted, starting IMU tracking.");
-                    window.addEventListener('devicemotion', updateIMUData);
-                } else {
-                    alert('Permission to access motion data was denied. Please enable motion data in your browser settings.');
-                }
-            })
-            .catch(error => {
-                console.error("Error requesting motion permission: ", error);
-            });
+        DeviceMotionEvent.requestPermission().then(response => {
+            if (response === 'granted') {
+                console.log("Accelerometer permission granted.");
+                startIMUTracking();
+            } else {
+                alert('Permission denied. Please enable motion access in settings.');
+            }
+        }).catch(error => {
+            console.error("Error requesting motion permission: ", error);
+            alert("An error occurred while requesting motion sensor access.");
+        });
     } else if (typeof DeviceMotionEvent !== 'undefined') {
-        console.log("No need to request permission, starting IMU tracking directly.");
-        // For devices or browsers that do not require permission (non-iOS or older versions)
-        window.addEventListener('devicemotion', updateIMUData);
+        console.log("Permission not required, starting IMU tracking directly.");
+        // For devices that don't require permission (non-iOS or older versions)
+        startIMUTracking();
     } else {
         alert("Your device does not support motion sensors or the browser does not allow access.");
         console.log("DeviceMotionEvent is not supported by this device or browser.");
     }
 }
 
-// Function to update acceleration and velocity
-function updateIMUData(event) {
-    if (event.acceleration) {
-        console.log("Acceleration Data: ", event.acceleration);
+// Start tracking accelerometer data
+function startIMUTracking() {
+    window.addEventListener('devicemotion', event => {
+        if (event.acceleration) {
+            console.log("Acceleration Data: X=" + event.acceleration.x + ", Y=" + event.acceleration.y + ", Z=" + event.acceleration.z);
 
-        acceleration.x = event.acceleration.x || 0;
-        acceleration.y = event.acceleration.y || 0;
-        acceleration.z = event.acceleration.z || 0;
+            // Update acceleration data
+            acceleration.x = event.acceleration.x || 0;
+            acceleration.y = event.acceleration.y || 0;
+            acceleration.z = event.acceleration.z || 0;
 
-        // Update velocity (just a simple integration here, could be improved)
-        velocity.x += acceleration.x;
-        velocity.y += acceleration.y;
-        velocity.z += acceleration.z;
+            // Update velocity (simple integration for demonstration purposes)
+            velocity.x += acceleration.x;
+            velocity.y += acceleration.y;
+            velocity.z += acceleration.z;
 
-        console.log("Updated Velocity: ", velocity);
-    } else {
-        console.log("No acceleration data available.");
-    }
+            console.log("Updated Velocity: X=" + velocity.x.toFixed(2) + ", Y=" + velocity.y.toFixed(2) + ", Z=" + velocity.z.toFixed(2));
+        } else {
+            console.log("No acceleration data available.");
+        }
+    });
 }
 
-// Function to log cone positions when button is pressed
-document.getElementById('logCone').addEventListener('click', () => {
+// Function to log cone positions
+function logConePosition() {
     let position = { x: velocity.x, y: velocity.y, z: velocity.z };
     conePositions.push(position);
 
@@ -62,7 +62,8 @@ document.getElementById('logCone').addEventListener('click', () => {
     conePositions.forEach((pos, index) => {
         logDiv.innerHTML += `Cone ${index + 1}: X: ${pos.x.toFixed(2)}, Y: ${pos.y.toFixed(2)}, Z: ${pos.z.toFixed(2)}<br>`;
     });
-});
+}
 
-// Start IMU tracking when the page loads
-window.onload = startIMUTracking;
+// Event listeners for buttons
+document.getElementById('startTracking').addEventListener('click', getAccel);
+document.getElementById('logCone').addEventListener('click', logConePosition);

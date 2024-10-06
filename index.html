@@ -1,36 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autocross Dead Reckoning Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dead Reckoning App</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
         }
-        #trackingArea {
-            position: relative;
-            width: 100vw;
-            height: 80vh;
-            border: 2px solid black;
-            margin: 20px auto;
-            overflow: hidden;
-        }
-        .logDot {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: orange;
-            border-radius: 50%;
+        button {
+            margin: 20px;
+            padding: 10px;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <h1>Autocross Dead Reckoning Tracker</h1>
-    <p>Click "Log Position" to track the phone's movement and see the logged positions as orange dots.</p>
-    <button id="startTracking">Start Tracking</button>
-    <button id="logPosition" style="margin-left: 10px;">Log Position</button>
-    <div id="trackingArea"></div>
+    <h1>Phone Motion Logger</h1>
+    <button id="requestPermission">Request Motion Permission</button>
+    <button id="logPosition" disabled>Log Position</button>
     <div id="log"></div>
 
     <script src="app.js"></script>
